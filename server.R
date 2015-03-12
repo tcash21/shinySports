@@ -13,6 +13,7 @@ shinyServer(function(input, output, session){
 
 newData <- reactive({
  
+invalidateLater(10000, session)
 drv <- dbDriver("SQLite")
 con <- dbConnect(drv, "/home/ec2-user/sports/sports.db")
 
@@ -26,8 +27,9 @@ for (i in seq(along=tables)) {
   if(tables[[i]] == 'NCAAHalflines' | tables[[i]] == 'NCAAlines'){
   print(tables[[i]])
   print(0)
-  lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT away_team, home_team, game_date, line, spread, max(game_time) as
-game_time from ", tables[[i]], " where game_date = '", format(as.Date(input$date),"%m/%d/%Y"),  "' group by away_team, home_team, game_date;"))
+  lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT n.away_team, n.home_team, n.game_date, n.line, n.spread, n.game_time from '", tables[[i]], "' n inner join 
+(select game_date, away_team,home_team, max(game_time) as mgt from '", tables[[i]], "' group by game_date, away_team, home_team) s2 on s2.game_date = n.game_date and 
+s2.away_team = n.away_team and s2.home_team = n.home_team and n.game_time = s2.mgt and n.game_date = '", format(as.Date(input$date),"%m/%d/%Y"),  "';"))
   } else if (tables[[i]] == 'NCAAseasontotals' | tables[[i]] == 'NCAAseasonstats') {
         print (tables[[i]])
         print(1)
@@ -193,7 +195,7 @@ dbDisconnect(con)
 
 
 output$results <- renderChart2({
-  invalidateLater(1500, session) 
+#  invalidateLater(5000, session) 
   dTable(newData(), aaSorting=list(c(3,"desc")))
 
 })
