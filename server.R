@@ -181,13 +181,50 @@ f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM + TPM[1]) / 2)$chd_t
 f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM + FTM[1]) / 2)$chd_ftm
 f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO + TO[1]) / 2)$chd_to
 f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB + OREB[1]) / 2)$chd_oreb
+
+## load nightly model trained on all previous data
+load("~/sports/nightlyModel.Rdat")
+
+f<-f[order(f$GAME_ID),]
+f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS - HALF_PTS[1])
+f$team <- ""
+f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
+f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
+f <- f[,c(1,2,13,54:68)]
+#f<-f[order(f$GAME_ID),]
+wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
+train <- wide[,c(6:17,20:33)]
+
+
+p <- predict(g, newdata=train, family="binomial", se.fit=TRUE)
+preds <- p$fit > .5
+conf <- p$se.fit
+result <- wide[,c(1:3, 18)]
+result$projectedWinner <- "TEAM1"
+result$projectedWinner[which(as.character(preds) == TRUE)] <- "TEAM2"
+result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
+result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
+colnames(result)[2] <- "TEAM1"
+colnames(result)[4] <- "TEAM2"
+if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
+   #result$final_pts <- ncaafinal[match(result$GAME_ID, ncaafinal$game_id),]$pts
+   n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
+   d<-ddply(n, .(game_id), transform, won=pts > min(pts))
+   d<-d[which(d$won == TRUE),]
+   result$actualWinner <- ""
+   result[match(d$game_id, result$GAME_ID),]$actualWinner <- d$team
+} else {
+    return(result)
+}
+
 } else{
 
 return(data.frame(results="No Results"))
 
 }
 
-return(f[,c(1,2,30,31,54:67)])
+return(result)
+#return(f[,c(1,2,30,31,54:67)])
 dbDisconnect(con)
 
 })
@@ -196,7 +233,7 @@ dbDisconnect(con)
 
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
-  dTable(newData(), aaSorting=list(c(3,"desc")))
+  dTable(newData())
 
 })
 
