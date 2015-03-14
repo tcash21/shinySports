@@ -192,7 +192,8 @@ f[,34:49] <- apply(f[,34:49], 2, function(x) as.numeric(as.character(x)))
 f[,51:52] <- apply(f[,51:52], 2, function(x) as.numeric(as.character(x)))
 
 ## Team1 and Team2 Halftime Differentials
-f$fg_percent <- ((f$HALF_FGM / f$HALF_FGA) - (f$SEASON_FGM / f$SEASON_FGA - .01))
+f <- f[order(f$GAME_ID),]
+f$fg_percent <- ((f$HALF_FGM / f$HALF_FGA) - (f$SEASON_FGM / f$SEASON_FGA))
 f$FGM <- (f$HALF_FGM - (f$SEASON_FGM / f$SEASON_GP / 2))
 f$TPM <- (f$HALF_3PM - (f$SEASON_3PM / f$SEASON_GP / 2))
 f$FTM <- (f$HALF_FTM - (f$SEASON_FTM / f$SEASON_GP / 2 - 1))
@@ -203,30 +204,30 @@ f$OREB <- (f$HALF_OREB - (f$SEASON_OFFR / f$SEASON_GP / 2))
 f$COVERS_UPDATE<-as.character(f$COVERS_UPDATE)
 f$COVERS_HALF_UPDATE <- as.character(f$COVERS_HALF_UPDATE)
 
-f$chd_fg <- ddply(f, .(GAME_ID), transform, chd_fg = (fg_percent + fg_percent[1]) / 2)$chd_fg
-f$chd_fgm <- ddply(f, .(GAME_ID), transform, chd_fgm = (FGM + FGM[1]) / 2)$chd_fgm
-f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM + TPM[1]) / 2)$chd_tpm
-f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM + FTM[1]) / 2)$chd_ftm
-f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO + TO[1]) / 2)$chd_to
-f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB + OREB[1]) / 2)$chd_oreb
+f$chd_fg <- ddply(f, .(GAME_ID), transform, chd_fg = (fg_percent[1] + fg_percent[2]) / 2)$chd_fg
+f$chd_fgm <- ddply(f, .(GAME_ID), transform, chd_fgm = (FGM[1] + FGM[2]) / 2)$chd_fgm
+f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM[1] + TPM[2]) / 2)$chd_tpm
+f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM[1] + FTM[2]) / 2)$chd_ftm
+f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO[1] + TO[2]) / 2)$chd_to
+f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB[1] + OREB[2]) / 2)$chd_oreb
 
 ## load nightly model trained on all previous data
 load("~/sports/nightlyModel.Rdat")
 
 f<-f[order(f$GAME_ID),]
-f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS - HALF_PTS[1])
+f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS[1] - HALF_PTS[2])
 f$team <- ""
 f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
 f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
-f <- f[,c(1,2,13,54:68)]
+f <- f[,c(1,2,13,28,54:68)]
 #f<-f[order(f$GAME_ID),]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
-train <- wide[,c(6:17,20:33)]
+train <- wide[,c(4:18,21:35)]
 
 set.seed(21)
 p <- predict(g, newdata=train, family="binomial", type="response")
 preds <- p > .5
-result <- wide[,c(1:3, 18)]
+result <- wide[,c(1:2,19,3:4,21,7,24,14,33)]
 if(Sys.Date() == input$date){
 result$projectedWinner <- "TEAM1"
 result$projectedWinner[which(as.character(preds) == TRUE)] <- "TEAM2"
@@ -234,7 +235,11 @@ result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.
 result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
 }
 colnames(result)[2] <- "TEAM1"
-colnames(result)[4] <- "TEAM2"
+colnames(result)[3] <- "TEAM2"
+colnames(result)[4] <- "DATE"
+colnames(result)[5] <- "HALF_PTS.TEAM1"
+colnames(result)[9] <- "chd_FGM"
+colnames(result)[10] <- "chd_FTM"
 if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
    n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
    d<-ddply(n, .(game_id), transform, won=pts > min(pts))
@@ -261,7 +266,7 @@ dbDisconnect(con)
 
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
-  dTable(newData())
+  dTable(newData(), sPaginationType="full_numbers")
 
 })
 
