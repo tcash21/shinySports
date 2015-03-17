@@ -1,3 +1,4 @@
+library(dplyr)
 library(plyr)
 library(RSQLite)
 library(shiny)
@@ -6,10 +7,6 @@ library(rCharts)
 options(shiny.trace=TRUE)
 
 shinyServer(function(input, output, session){
-
- output$dateText  <- renderText({
-    paste("input$date is", as.character(input$date))
-  })
 
 newData <- reactive({
  
@@ -25,10 +22,10 @@ lDataFrames <- vector("list", length=length(tables))
  ## create a data.frame for each table
 for (i in seq(along=tables)) {
   if(tables[[i]] == 'NCAAHalflines' | tables[[i]] == 'NCAAlines'){
-#  lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT n.away_team, n.home_team, n.game_date, n.line, n.spread, n.game_time from '", tables[[i]], "' n inner join 
-#(select game_date, away_team,home_team, max(game_time) as mgt from '", tables[[i]], "' group by game_date, away_team, home_team) s2 on s2.game_date = n.game_date and 
-#s2.away_team = n.away_team and s2.home_team = n.home_team and n.game_time = s2.mgt and n.game_date = '", format(as.Date(input$date),"%m/%d/%Y"),  "';"))
-  lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT * FROM ", tables[[i]]))
+   lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT n.away_team, n.home_team, n.game_date, n.line, n.spread, n.game_time from '", tables[[i]], "' n inner join 
+  (select game_date, away_team,home_team, max(game_time) as mgt from '", tables[[i]], "' group by game_date, away_team, home_team) s2 on s2.game_date = n.game_date and 
+  s2.away_team = n.away_team and s2.home_team = n.home_team and n.game_time = s2.mgt and n.game_date = '", format(as.Date(input$date),"%m/%d/%Y"),  "';"))
+ # lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT * FROM ", tables[[i]]))
 
   } else if (tables[[i]] == 'NCAAseasontotals' | tables[[i]] == 'NCAAseasonstats') {
         print (tables[[i]])
@@ -78,9 +75,11 @@ lookup$home_team <- lookup$covers_team
 lines$game_time<-as.POSIXlt(lines$game_time)
 lines<-lines[order(lines$home_team, lines$game_time),]
 lines$key <- paste(lines$away_team, lines$home_team, lines$game_date)
-res2 <- tapply(1:nrow(lines), INDEX=lines$key, FUN=function(idxs) idxs[lines[idxs,'line'] != 'OFF'][1])
-first<-lines[res2[which(!is.na(res2))],]
-lines <- first[,1:6]
+
+# grabs the first line value after 'OFF'
+#res2 <- tapply(1:nrow(lines), INDEX=lines$key, FUN=function(idxs) idxs[lines[idxs,'line'] != 'OFF'][1])
+#first<-lines[res2[which(!is.na(res2))],]
+#lines <- first[,1:6]
 	
 ## Merge line data with lookup table
 la<-merge(lookup, lines, by="away_team")
@@ -96,9 +95,11 @@ colnames(m3h)[49] <- "CoversTotalLineUpdateTime"
 halflines$game_time<-as.POSIXlt(halflines$game_time)
 halflines<-halflines[order(halflines$home_team, halflines$game_time),]
 halflines$key <- paste(halflines$away_team, halflines$home_team, halflines$game_date)
-res2 <- tapply(1:nrow(halflines), INDEX=halflines$key, FUN=function(idxs) idxs[halflines[idxs,'line'] != 'OFF'][1])
-first<-halflines[res2[which(!is.na(res2))],]
-halflines <- first[,1:6]
+
+# grabs first line value after 'OFF'
+#res2 <- tapply(1:nrow(halflines), INDEX=halflines$key, FUN=function(idxs) idxs[halflines[idxs,'line'] != 'OFF'][1])
+#first<-halflines[res2[which(!is.na(res2))],]
+#halflines <- first[,1:6]
 
 la2<-merge(lookup, halflines, by="away_team")
 lh2<-merge(lookup, halflines, by="home_team")
@@ -132,27 +133,17 @@ halftime_stats<-halftime_stats[order(halftime_stats$game_id),]
 halftime_stats$CoversTotalLineUpdateTime <- as.character(halftime_stats$CoversTotalLineUpdateTime)
 halftime_stats$CoversHalfLineUpdateTime<-as.character(halftime_stats$CoversHalfLineUpdateTime)
 
-diffs<-ddply(halftime_stats, .(game_id), transform, diff=pts.x - pts.x[1])
-halftime_stats$half_diff <- diffs$diff
+#diffs<-ddply(halftime_stats, .(game_id), transform, diff=pts.x[1] - pts.x[2])
+if(dim(halftime_stats)[1] > 0 ){
+halftime_stats$half_diff <-  rep(aggregate(pts.x ~ game_id, data=halftime_stats, FUN=diff)[,2] * -1, each=2)
 halftime_stats$line.y<-as.numeric(halftime_stats$line.y)
 halftime_stats$line <- as.numeric(halftime_stats$line)
-mwt <- ddply(halftime_stats, .(game_id), transform, mwt=pts.x + pts.x[1] + line.y - line)
-
-
-## removes any anomalies or games with != 2 game_ids
-if(length(which(mwt$game_id %in% names(which(table(mwt$game_id) != 2)))) > 0){
- 
- mwt <- mwt[-which(mwt$game_id %in% names(which(table(mwt$game_id) != 2))),]
-# half_stats<-mwt[seq(from=2, to=dim(mwt)[1], by=2),]
-}
-
-if(dim(mwt)[1] > 0){
-half_stats <- mwt[seq(from=2, to=dim(mwt)[1], by=2),]
+halftime_stats$mwt<-rep(aggregate(pts.x ~ game_id, data=halftime_stats, sum)[,2], each=2) + halftime_stats$line.y - halftime_stats$line
+half_stats <- halftime_stats[seq(from=2, to=dim(halftime_stats)[1], by=2),]
 } else {
   return(data.frame(results="No Results"))
 }
-#colnames(m3h)[44:45] <- c("home_team.x", "home_team.y")
-#colnames(m3a)[41] <- "home_team"
+
 all <- rbind(m3a, m3h)
 all <- all[,-1]
 all$key <- paste(all$game_id, all$team.y)
@@ -161,8 +152,8 @@ all<-all[match(unique(all$key), all$key),]
 colnames(all) <- c("GAME_ID","TEAM","HALF_FGM", "HALF_FGA", "HALF_3PM",
 "HALF_3PA", "HALF_FTM","HALF_FTA","HALF_OREB", "HALF_DREB", "HALF_REB", "HALF_AST", "HALF_STL", "HALF_BLK", "HALF_TO", "HALF_PF", "HALF_PTS",
 "HALF_TIMESTAMP", "TEAM1", "TEAM2", "GAME_DATE","GAME_TIME","REMOVE2","REMOVE3","MIN", "SEASON_FGM","SEASON_FGA","SEASON_FTM","SEASON_FTA","SEASON_3PM",
-"SEASON_3PA","SEASON_PTS","SEASON_OFFR","SEASON_DEFR","SEASON_REB","SEASON_AST","SEASON_TO","SEASON_STL", "SEASON_BLK","REMOVE4","REMOVE5","REMOVE6",
-"REMOVE7","REMOVE8","REMOVE9","LINE", "SPREAD", "COVERS_UPDATE","LINE_HALF", "SPREAD_HALF", "COVERS_HALF_UPDATE")
+"SEASON_3PA","SEASON_PTS","SEASON_OFFR","SEASON_DEFR","SEASON_REB","SEASON_AST","SEASON_TO","SEASON_STL", "SEASON_BLK","REMOVE5","REMOVE6",
+"REMOVE7","REMOVE8","REMOVE9","REMOVE10","LINE", "SPREAD", "COVERS_UPDATE","LINE_HALF", "SPREAD_HALF", "COVERS_HALF_UPDATE", "REMOVE11")
 all <- all[,-grep("REMOVE", colnames(all))]
 
 ## Add the season total stats
@@ -204,51 +195,75 @@ f$OREB <- (f$HALF_OREB - (f$SEASON_OFFR / f$SEASON_GP / 2))
 f$COVERS_UPDATE<-as.character(f$COVERS_UPDATE)
 f$COVERS_HALF_UPDATE <- as.character(f$COVERS_HALF_UPDATE)
 
-f$chd_fg <- ddply(f, .(GAME_ID), transform, chd_fg = (fg_percent[1] + fg_percent[2]) / 2)$chd_fg
-f$chd_fgm <- ddply(f, .(GAME_ID), transform, chd_fgm = (FGM[1] + FGM[2]) / 2)$chd_fgm
-f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM[1] + TPM[2]) / 2)$chd_tpm
-f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM[1] + FTM[2]) / 2)$chd_ftm
-f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO[1] + TO[2]) / 2)$chd_to
-f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB[1] + OREB[2]) / 2)$chd_oreb
+#f$chd_fg <- ddply(f, .(GAME_ID), transform, chd_fg = (fg_percent[1] + fg_percent[2]) / 2)$chd_fg
+f$chd_fg<-rep(aggregate(fg_percent ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
+#f$chd_fgm <- ddply(f, .(GAME_ID), transform, chd_fgm = (FGM[1] + FGM[2]) / 2)$chd_fgm
+f$chd_fgm <- rep(aggregate(FGM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
+#f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM[1] + TPM[2]) / 2)$chd_tpm
+f$chd_tpm <- rep(aggregate(TPM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
+#f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM[1] + FTM[2]) / 2)$chd_ftm
+f$chd_ftm <- rep(aggregate(FTM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
+#f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO[1] + TO[2]) / 2)$chd_to
+f$chd_to <- rep(aggregate(TO ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
+#f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB[1] + OREB[2]) / 2)$chd_oreb
+f$chd_oreb <- rep(aggregate(OREB ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
+
 
 ## load nightly model trained on all previous data
 load("~/sports/nightlyModel.Rdat")
 
 f<-f[order(f$GAME_ID),]
-f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS[1] - HALF_PTS[2])
+#f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS[1] - HALF_PTS[2])
 f$team <- ""
 f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
 f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
-f <- f[,c(1,2,13,28,54:68)]
+f <- f[,c(1,2,13,28,32,48,51,54:68)]
 #f<-f[order(f$GAME_ID),]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
-train <- wide[,c(4:18,21:35)]
+
+train <- wide[,c(4,6:21,24,29:35)]
+train<-as.matrix(train)
+train[which(is.na(train))] <- 0
 
 set.seed(21)
-p <- predict(g, newdata=train, family="binomial", type="response")
-preds <- p > .5
-result <- wide[,c(1:2,19,3:4,21,7,24,14,33)]
-if(Sys.Date() == input$date){
-result$projectedWinner <- "TEAM1"
-result$projectedWinner[which(as.character(preds) == TRUE)] <- "TEAM2"
-result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
-result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
-}
-colnames(result)[2] <- "TEAM1"
-colnames(result)[3] <- "TEAM2"
-colnames(result)[4] <- "DATE"
-colnames(result)[5] <- "HALF_PTS.TEAM1"
-colnames(result)[9] <- "chd_FGM"
-colnames(result)[10] <- "chd_FTM"
-if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
-   n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
-   d<-ddply(n, .(game_id), transform, won=pts > min(pts))
-   d<-d[which(d$won == TRUE),]
-   result$actualWinner <- ""
-   result[match(d$game_id, result$GAME_ID),]$actualWinner <- d$team
-} else {
-    return(result)
-}
+p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
+#preds <- p > .5
+result <- wide[,c(1,2,22,3,4,24,5:8,11,31,13,33)]
+result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
+result <- result[,c(-4,-7)]
+result<-result[,c(1,13,2:12)]
+
+#if(Sys.Date() == input$date){
+#result$projectedWinner <- "TEAM1"
+#result$projectedWinner[which(as.character(preds) == TRUE)] <- "TEAM2"
+#result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
+#result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
+#}
+colnames(result)[3:13] <- c("TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","HALF_LINE","MWT", "FGP_T1", "FGP_T2", "FTM_T1", "FTM_T2")
+result$SUM_FGP = result$FGP_T1 + result$FGP_T2
+result$SUM_FTM = result$FTM_T1 + result$FTM_T2
+result$prediction <- p[,1]
+result$lower <- p[,2]
+result$upper <- p[,3]
+result$pred2 <- result$prediction - (result$HALF_PTS.T1 - result$HALF_PTS.T2)
+result$GAME_DATE <- as.character(result$GAME_DATE)
+result <- result[order(result$GAME_DATE),]
+
+
+#if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
+#   n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
+#   d<-ddply(n, .(game_id), transform, won=pts > min(pts))
+#   d<-d[which(d$won == TRUE),]
+#   result$actualWinner <- ""
+#   result[match(d$game_id, result$GAME_ID),]$actualWinner <- d$team
+#} else {
+#    return(result)
+#}
 
 } else{
 
@@ -266,7 +281,9 @@ dbDisconnect(con)
 
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
-  dTable(newData(), sPaginationType="full_numbers")
+#  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
+  dTable(newData(), bPaginate=F)
+
 
 })
 
