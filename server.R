@@ -120,8 +120,11 @@ m3h<-m3h[match(l2$key.y, m3h$key),]
 m3h<-cbind(m3h, l2[,94:96])
 colnames(m3h)[44:45] <- c("home_team.x", "home_team.y")
 colnames(m3a)[41] <- "home_team"
-#all <- rbind(m3a, m3h)
-m3h <- m3h[,1:52]
+if(dim(m3a)[1] > 0){
+ m3a$hometeam <- FALSE
+ m3h$hometeam <- TRUE
+ m3h <- m3h[,1:53]
+}
 
 halftime_stats<-rbind(m3a,m3h)
 if(length(which(halftime_stats$game_id %in% names(which(table(halftime_stats$game_id) != 2))) > 0)){
@@ -153,7 +156,7 @@ colnames(all) <- c("GAME_ID","TEAM","HALF_FGM", "HALF_FGA", "HALF_3PM",
 "HALF_3PA", "HALF_FTM","HALF_FTA","HALF_OREB", "HALF_DREB", "HALF_REB", "HALF_AST", "HALF_STL", "HALF_BLK", "HALF_TO", "HALF_PF", "HALF_PTS",
 "HALF_TIMESTAMP", "TEAM1", "TEAM2", "GAME_DATE","GAME_TIME","REMOVE2","REMOVE3","MIN", "SEASON_FGM","SEASON_FGA","SEASON_FTM","SEASON_FTA","SEASON_3PM",
 "SEASON_3PA","SEASON_PTS","SEASON_OFFR","SEASON_DEFR","SEASON_REB","SEASON_AST","SEASON_TO","SEASON_STL", "SEASON_BLK","REMOVE5","REMOVE6",
-"REMOVE7","REMOVE8","REMOVE9","REMOVE10","LINE", "SPREAD", "COVERS_UPDATE","LINE_HALF", "SPREAD_HALF", "COVERS_HALF_UPDATE", "REMOVE11")
+"REMOVE7","REMOVE8","REMOVE9","REMOVE10","LINE", "SPREAD", "COVERS_UPDATE","LINE_HALF", "SPREAD_HALF", "COVERS_HALF_UPDATE", "HOME_TEAM", "REMOVE11")
 all <- all[,-grep("REMOVE", colnames(all))]
 
 ## Add the season total stats
@@ -166,7 +169,7 @@ seasontotals$key <- paste(seasontotals$GAME_DATE, seasontotals$TEAM)
 
 x<-merge(seasontotals, all, by=c("key"))
 x<- x[,c(-1, -5, -16, -35)]
-final<-x[,c(1:53)]
+final<-x[,c(1:54)]
 colnames(final)[3:12] <- c("SEASON_GP", "SEASON_PPG", "SEASON_RPG", "SEASON_APG", "SEASON_SPG", "SEASON_BPG", "SEASON_TPG", "SEASON_FGP",
 "SEASON_FTP", "SEASON_3PP")
 #final$GAME_DATE <- seasontotals$GAME_DATE[1]
@@ -195,24 +198,12 @@ f$OREB <- (f$HALF_OREB - (f$SEASON_OFFR / f$SEASON_GP / 2))
 f$COVERS_UPDATE<-as.character(f$COVERS_UPDATE)
 f$COVERS_HALF_UPDATE <- as.character(f$COVERS_HALF_UPDATE)
 
-#f$chd_fg <- ddply(f, .(GAME_ID), transform, chd_fg = (fg_percent[1] + fg_percent[2]) / 2)$chd_fg
 f$chd_fg<-rep(aggregate(fg_percent ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
-#f$chd_fgm <- ddply(f, .(GAME_ID), transform, chd_fgm = (FGM[1] + FGM[2]) / 2)$chd_fgm
 f$chd_fgm <- rep(aggregate(FGM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
-#f$chd_tpm <- ddply(f, .(GAME_ID), transform, chd_tpm = (TPM[1] + TPM[2]) / 2)$chd_tpm
 f$chd_tpm <- rep(aggregate(TPM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
-#f$chd_ftm <- ddply(f, .(GAME_ID), transform, chd_ftm = (FTM[1] + FTM[2]) / 2)$chd_ftm
 f$chd_ftm <- rep(aggregate(FTM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
-#f$chd_to <- ddply(f, .(GAME_ID), transform, chd_to = (TO[1] + TO[2]) / 2)$chd_to
 f$chd_to <- rep(aggregate(TO ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
-#f$chd_oreb <- ddply(f, .(GAME_ID), transform, chd_oreb = (OREB[1] + OREB[2]) / 2)$chd_oreb
 f$chd_oreb <- rep(aggregate(OREB ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
-
 
 ## load nightly model trained on all previous data
 load("~/sports/nightlyModel.Rdat")
@@ -222,7 +213,7 @@ f<-f[order(f$GAME_ID),]
 f$team <- ""
 f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
 f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
-f <- f[,c(1,2,13,28,32,48:52,54:68)]
+f <- f[,c(1,2,13,28,32,48:52,54:69)]
 #f<-f[order(f$GAME_ID),]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 
@@ -233,10 +224,10 @@ wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 #set.seed(21)
 #p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
 #preds <- p > .5
-result <- wide[,c(1:3,5,25,4,27,6,7,9,10,11,19:24)]
+result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11)]
 result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
 result <- result[,c(-3:-4)]
-result <- result[,c(1,17,2:16)]
+result <- result[,c(1,18,17,2:16)]
 
 
 #if(Sys.Date() == input$date){
@@ -245,7 +236,7 @@ result <- result[,c(1,17,2:16)]
 #result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
 #result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
 #}
-colnames(result)[3:17] <- c("TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
+colnames(result)[3:18] <- c("TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
 #result$SUM_FGP = result$FGP_T1 + result$FGP_T2
 #result$SUM_FTM = result$FTM_T1 + result$FTM_T2
 #result$prediction <- p[,1]
@@ -284,7 +275,7 @@ result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
 result$chd_toU[is.na(result$chd_toU)] <- 0
 result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
 
-result <- result[,c(1:4,24,32,5:23,25:31)]
+result <- result[,c(1:5,25,33,6:11,12,19:32,13:18)]
 result <- result[order(result$GAME_DATE),]
 result$GAME_DATE <- as.character(result$GAME_DATE)
 
