@@ -222,21 +222,22 @@ f<-f[order(f$GAME_ID),]
 f$team <- ""
 f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
 f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
-f <- f[,c(1,2,13,28,32,48,51,54:68)]
+f <- f[,c(1,2,13,28,32,48:52,54:68)]
 #f<-f[order(f$GAME_ID),]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 
-train <- wide[,c(4,6:21,24,29:35)]
-train<-as.matrix(train)
-train[which(is.na(train))] <- 0
+#train <- wide[,c(4,6:21,24,29:35)]
+#train<-as.matrix(train)
+#train[which(is.na(train))] <- 0
 
-set.seed(21)
-p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
+#set.seed(21)
+#p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
 #preds <- p > .5
-result <- wide[,c(1,2,22,3,4,24,5:8,11,31,13,33)]
+result <- wide[,c(1:3,5,25,4,27,6,7,9,10,11,19:24)]
 result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
-result <- result[,c(-4,-7)]
-result<-result[,c(1,13,2:12)]
+result <- result[,c(-3:-4)]
+result <- result[,c(1,17,2:16)]
+
 
 #if(Sys.Date() == input$date){
 #result$projectedWinner <- "TEAM1"
@@ -244,16 +245,48 @@ result<-result[,c(1,13,2:12)]
 #result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
 #result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
 #}
-colnames(result)[3:13] <- c("TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","HALF_LINE","MWT", "FGP_T1", "FGP_T2", "FTM_T1", "FTM_T2")
-result$SUM_FGP = result$FGP_T1 + result$FGP_T2
-result$SUM_FTM = result$FTM_T1 + result$FTM_T2
-result$prediction <- p[,1]
-result$lower <- p[,2]
-result$upper <- p[,3]
-result$pred2 <- result$prediction - (result$HALF_PTS.T1 - result$HALF_PTS.T2)
-result$GAME_DATE <- as.character(result$GAME_DATE)
-result <- result[order(result$GAME_DATE),]
+colnames(result)[3:17] <- c("TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
+#result$SUM_FGP = result$FGP_T1 + result$FGP_T2
+#result$SUM_FTM = result$FTM_T1 + result$FTM_T2
+#result$prediction <- p[,1]
+#result$lower <- p[,2]
+#result$upper <- p[,3]
+#result$pred2 <- result$prediction - (result$HALF_PTS.T1 - result$HALF_PTS.T2)
 
+result$mwtO <- as.numeric(result$MWT < 7.1 & result$MWT > -3.9)
+result$chd_fgO <- as.numeric(result$chd_fg < .15 & result$chd_fg > -.07)
+result$chd_fgmO <- as.numeric(result$chd_fgm < -3.9)
+result$chd_tpmO <- as.numeric(result$chd_tpm < -1.9)
+result$chd_ftmO <- as.numeric(result$chd_ftm < -.9)
+result$chd_toO <- as.numeric(result$chd_to < -1.9)
+
+result$mwtO[is.na(result$mwtO)] <- 0
+result$chd_fgO[is.na(result$chd_fgO)] <- 0
+result$chd_fgmO[is.na(result$chd_fgmO)] <- 0
+result$chd_tpmO[is.na(result$chd_tpmO)] <- 0
+result$chd_ftmO[is.na(result$chd_ftmO)] <- 0
+result$chd_toO[is.na(result$chd_toO)] <- 0
+result$overSum <- result$mwtO + result$chd_fgO + result$chd_fgmO + result$chd_tpmO + result$chd_ftmO + result$chd_toO
+
+result$fullSpreadU <- as.numeric(abs(result$SPREAD) > 10.9)
+result$mwtU <- as.numeric(result$MWT > 7.1)
+result$chd_fgU <- as.numeric(result$chd_fg > .15 | result$chd_fg < -.07)
+result$chd_fgmU <- 0
+result$chd_tpmU <- 0
+result$chd_ftmU <- as.numeric(result$chd_ftm > -0.9)
+result$chd_toU <- as.numeric(result$chd_to > -1.9)
+
+result$mwtU[is.na(result$mwtU)] <- 0
+result$chd_fgO[is.na(result$chd_fgU)] <- 0
+result$chd_fgmU[is.na(result$chd_fgmU)] <- 0
+result$chd_tpmU[is.na(result$chd_tpmU)] <- 0
+result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
+result$chd_toU[is.na(result$chd_toU)] <- 0
+result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
+
+result <- result[,c(1:4,24,32,5:23,25:31)]
+result <- result[order(result$GAME_DATE),]
+result$GAME_DATE <- as.character(result$GAME_DATE)
 
 #if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
 #   n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
@@ -282,7 +315,7 @@ dbDisconnect(con)
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
 #  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
-  dTable(newData(), bPaginate=F)
+  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
 
 
 })
