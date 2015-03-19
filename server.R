@@ -239,6 +239,7 @@ result <- result[,c(1,18,17,2:16)]
 colnames(result)[3:18] <- c("TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
 #result$SUM_FGP = result$FGP_T1 + result$FGP_T2
 #result$SUM_FTM = result$FTM_T1 + result$FTM_T2
+
 #result$prediction <- p[,1]
 #result$lower <- p[,2]
 #result$upper <- p[,3]
