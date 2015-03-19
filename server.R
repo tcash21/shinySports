@@ -231,7 +231,7 @@ wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 #set.seed(21)
 #p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
 #preds <- p > .5
-result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11,50)]
+result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11,49)]
 result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
 result <- result[,c(-3:-4)]
 result <- result[,c(1,19,18,17,2:16)]
