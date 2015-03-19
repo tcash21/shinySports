@@ -205,6 +205,13 @@ f$chd_ftm <- rep(aggregate(FTM ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], e
 f$chd_to <- rep(aggregate(TO ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
 f$chd_oreb <- rep(aggregate(OREB ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2], each=2)
 
+## Favorite / Under differentials
+## f$FAVORITE <- f$SPREAD < 0 & f$HOME_TEAM == FALSE
+## f$F_MWT<-as.numeric(f$FAVORITE == TRUE & f$mwt > 11.1)
+## f$F_SPREAD <- as.numeric(f$SPREAD < -10.9)
+
+
+
 ## load nightly model trained on all previous data
 load("~/sports/nightlyModel.Rdat")
 
@@ -224,10 +231,10 @@ wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 #set.seed(21)
 #p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
 #preds <- p > .5
-result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11)]
+result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11,50)]
 result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
 result <- result[,c(-3:-4)]
-result <- result[,c(1,18,17,2:16)]
+result <- result[,c(1,19,18,17,2:16)]
 
 
 #if(Sys.Date() == input$date){
@@ -236,7 +243,8 @@ result <- result[,c(1,18,17,2:16)]
 #result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
 #result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
 #}
-colnames(result)[3:18] <- c("TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
+
+colnames(result)[3:19] <- c("TEAM1_FAV", "TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
 #result$SUM_FGP = result$FGP_T1 + result$FGP_T2
 #result$SUM_FTM = result$FTM_T1 + result$FTM_T2
 
@@ -276,7 +284,7 @@ result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
 result$chd_toU[is.na(result$chd_toU)] <- 0
 result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
 
-result <- result[,c(1:5,25,33,6:11,12,19:32,13:18)]
+result <- result[,c(1:6,26,34,7:12,13,20:25,27:33,14:19)]
 result <- result[order(result$GAME_DATE),]
 result$GAME_DATE <- as.character(result$GAME_DATE)
 
