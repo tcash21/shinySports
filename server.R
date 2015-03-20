@@ -1,3 +1,4 @@
+library(randomForest)
 library(dplyr)
 library(plyr)
 library(RSQLite)
@@ -28,19 +29,13 @@ for (i in seq(along=tables)) {
  # lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT * FROM ", tables[[i]]))
 
   } else if (tables[[i]] == 'NCAAseasontotals' | tables[[i]] == 'NCAAseasonstats') {
-        print (tables[[i]])
-        print(1)
-        lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "' where the_date = '", format(as.Date(input$date), "%m/%d/%Y"), "'", sep=""))
+         lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "' where the_date = '", format(as.Date(input$date), "%m/%d/%Y"), "'", sep=""))
   } else if (tables[[i]] %in% c('NCAAgames')) {
-        print (tables[[i]])
-        print(2)
-        lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "' where game_date = '", format(as.Date(input$date), "%m/%d/%Y"), "'", sep=""))
+         lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "' where game_date = '", format(as.Date(input$date), "%m/%d/%Y"), "'", sep=""))
   } else {
-        print (tables[[i]])
-        print(3)
         lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
   }
-#  cat(tables[[i]], ":", i, "\n")
+  cat(tables[[i]], ":", i, "\n")
 }
 
 halflines <- lDataFrames[[9]]
@@ -51,7 +46,7 @@ boxscores <- lDataFrames[[15]]
 lookup <- lDataFrames[[16]]
 ncaafinal <- lDataFrames[[10]]
 seasontotals <- lDataFrames[[14]]
-
+papg <- lDataFrames[[18]]
 
 if(dim(halflines)[1] > 0 ){
 
@@ -213,23 +208,26 @@ f$chd_oreb <- rep(aggregate(OREB ~ GAME_ID, data=f, function(x) sum(x) / 2)[,2],
 
 
 ## load nightly model trained on all previous data
-load("~/sports/nightlyModel.Rdat")
+## load("~/sports/nightlyModel.Rdat")
 
 f<-f[order(f$GAME_ID),]
-#f<-ddply(f, .(GAME_ID), transform, half_diff=HALF_PTS[1] - HALF_PTS[2])
 f$team <- ""
 f[seq(from=1, to=dim(f)[1], by=2),]$team <- "TEAM1"
 f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
 f <- f[,c(1,2,13,28,32,48:52,54:69)]
-#f<-f[order(f$GAME_ID),]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 
-#train <- wide[,c(4,6:21,24,29:35)]
-#train<-as.matrix(train)
-#train[which(is.na(train))] <- 0
+train <- wide
+train$PA1<-papg[match(train$TEAM.x.TEAM1, papg$team),]$pa
+train$PF1<-papg[match(train$TEAM.x.TEAM1, papg$team),]$pf
+train$PA2<-papg[match(train$TEAM.x.TEAM2, papg$team),]$pa
+train$PF2<-papg[match(train$TEAM.x.TEAM2, papg$team),]$pf
+save(train, file="testData.Rdat")
 
-#set.seed(21)
-#p <- predict(m, newdata=data.frame(train), interval="predict", level=.75)
+load("~/sports/randomForestModel.Rdat")
+set.seed(21)
+p <- predict(r, newdata=data.frame(train), type="prob")
+
 #preds <- p > .5
 result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11,49)]
 result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM1, result$GAME_TIME.TEAM1), format="%m/%d/%Y %I:%M %p")
@@ -237,14 +235,7 @@ result <- result[,c(-3:-4)]
 result <- result[,c(1,19,18,17,2:16)]
 
 
-#if(Sys.Date() == input$date){
-#result$projectedWinner <- "TEAM1"
-#result$projectedWinner[which(as.character(preds) == TRUE)] <- "TEAM2"
-#result$projectedWinner[which(result$projectedWinner == "TEAM1")] <- result$TEAM.x.TEAM1[which(result$projectedWinner == "TEAM1")]
-#result$projectedWinner[which(result$projectedWinner == "TEAM2")] <- result$TEAM.x.TEAM2[which(result$projectedWinner == "TEAM2")]
-#}
-
-colnames(result)[3:19] <- c("TEAM1_FAV", "TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "HALF_LINE", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
+colnames(result)[3:19] <- c("TEAM1_FAV", "TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "LINE_HALF", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
 #result$SUM_FGP = result$FGP_T1 + result$FGP_T2
 #result$SUM_FTM = result$FTM_T1 + result$FTM_T2
 
@@ -284,19 +275,14 @@ result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
 result$chd_toU[is.na(result$chd_toU)] <- 0
 result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
 
-result <- result[,c(1:6,26,34,7:12,13,20:25,27:33,14:19)]
+result <- result[,c(1,2,5,6,26,34,7:12,13,20:25,26:29,32:33,14:19)]
+
+#load("~/sports/randomForestModel.Rdat")
+#p <- predict(r, newdata=result[c("SPREAD_HALF.TEAM1", "fullSpreadU")], type="prob")
+result$predOverProb <- p[,2]
+
 result <- result[order(result$GAME_DATE),]
 result$GAME_DATE <- as.character(result$GAME_DATE)
-
-#if(sum(match(result$GAME_ID, ncaafinal$game_id, 0)) > 0){
-#   n<-ncaafinal[which(ncaafinal$game_id %in% result$GAME_ID),]
-#   d<-ddply(n, .(game_id), transform, won=pts > min(pts))
-#   d<-d[which(d$won == TRUE),]
-#   result$actualWinner <- ""
-#   result[match(d$game_id, result$GAME_ID),]$actualWinner <- d$team
-#} else {
-#    return(result)
-#}
 
 } else{
 
