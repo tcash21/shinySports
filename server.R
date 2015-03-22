@@ -224,9 +224,9 @@ train$PA2<-papg[match(train$TEAM.x.TEAM2, papg$team),]$pa
 train$PF2<-papg[match(train$TEAM.x.TEAM2, papg$team),]$pf
 save(train, file="testData.Rdat")
 
-load("~/sports/randomForestModel.Rdat")
-set.seed(21)
-p <- predict(r, newdata=data.frame(train), type="prob")
+#load("~/sports/randomForestModel.Rdat")
+#set.seed(21)
+#p <- predict(r, newdata=data.frame(train), type="prob")
 
 #preds <- p > .5
 result <- wide[,c(1:3,5,26,4,28,6,7,9,10,12,20:25,11,49)]
@@ -277,8 +277,9 @@ result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$ch
 
 result <- result[,c(1,2,5,6,26,34,7:12,13,20:25,26:29,32:33,14:19)]
 
-#load("~/sports/randomForestModel.Rdat")
-#p <- predict(r, newdata=result[c("SPREAD_HALF.TEAM1", "fullSpreadU")], type="prob")
+load("~/sports/randomForestModel.Rdat")
+p <- predict(r, newdata=result[c("underSum", "overSum")], type="prob")
+
 result$predOverProb <- p[,2]
 
 result <- result[order(result$GAME_DATE),]
