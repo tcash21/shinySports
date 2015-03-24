@@ -38,15 +38,15 @@ for (i in seq(along=tables)) {
   cat(tables[[i]], ":", i, "\n")
 }
 
-halflines <- lDataFrames[[9]]
-games <- lDataFrames[[14]]
-lines <- lDataFrames[[15]]
-teamstats <- lDataFrames[[16]]
-boxscores <- lDataFrames[[18]]
-lookup <- lDataFrames[[19]]
-ncaafinal <- lDataFrames[[13]]
-seasontotals <- lDataFrames[[17]]
-papg <- lDataFrames[[21]]
+halflines <- lDataFrames[[12]]
+games <- lDataFrames[[17]]
+lines <- lDataFrames[[18]]
+teamstats <- lDataFrames[[19]]
+boxscores <- lDataFrames[[21]]
+lookup <- lDataFrames[[22]]
+ncaafinal <- lDataFrames[[16]]
+seasontotals <- lDataFrames[[20]]
+papg <- lDataFrames[[24]]
 
 if(dim(halflines)[1] > 0 ){
 
