@@ -13,7 +13,7 @@ newData <- reactive({
  
 invalidateLater(30000, session)
 drv <- dbDriver("SQLite")
-con <- dbConnect(drv, "/home/ec2-user/sports/sports.db")
+con <- dbConnect(drv, "/home/ec2-user/sports2015/NCAA/sports.db")
 
 tables <- dbListTables(con)
 
@@ -22,7 +22,7 @@ lDataFrames <- vector("list", length=length(tables))
 
  ## create a data.frame for each table
 for (i in seq(along=tables)) {
-  if(tables[[i]] == 'NCAAHalflines' | tables[[i]] == 'NCAAlines'){
+  if(tables[[i]] == 'NCAASBHalfLines' | tables[[i]] == 'NCAASBLines'){
    lDataFrames[[i]] <- dbGetQuery(conn=con, statement=paste0("SELECT n.away_team, n.home_team, n.game_date, n.line, n.spread, n.game_time from '", tables[[i]], "' n inner join 
   (select game_date, away_team,home_team, max(game_time) as mgt from '", tables[[i]], "' group by game_date, away_team, home_team) s2 on s2.game_date = n.game_date and 
   s2.away_team = n.away_team and s2.home_team = n.home_team and n.game_time = s2.mgt and n.game_date = '", format(as.Date(input$date),"%m/%d/%Y"),  "';"))
@@ -38,15 +38,15 @@ for (i in seq(along=tables)) {
   cat(tables[[i]], ":", i, "\n")
 }
 
-halflines <- lDataFrames[[12]]
-games <- lDataFrames[[17]]
-lines <- lDataFrames[[18]]
-teamstats <- lDataFrames[[19]]
-boxscores <- lDataFrames[[21]]
-lookup <- lDataFrames[[22]]
-ncaafinal <- lDataFrames[[16]]
-seasontotals <- lDataFrames[[20]]
-papg <- lDataFrames[[24]]
+halflines <- lDataFrames[[which(tables == "NCAASBHalfLines")]]
+games <- lDataFrames[[which(tables == "NCAAgames")]]
+lines <- lDataFrames[[which(tables == "NCAASBLines")]]
+teamstats <- lDataFrames[[which(tables == "NCAAseasonstats")]]
+boxscores <- lDataFrames[[which(tables == "NCAAstats")]]
+lookup <- lDataFrames[[which(tables == "NCAASBTeamLookup")]]
+ncaafinal <- lDataFrames[[which(tables == "NCAAfinalstats")]]
+seasontotals <- lDataFrames[[which(tables == "NCAAseasontotals")]]
+#papg <- lDataFrames[[24]]
 
 if(dim(halflines)[1] > 0 ){
 
@@ -63,8 +63,8 @@ m1<-merge(boxscores, games, by="game_id")
 m1$key <- paste(m1$team, m1$game_date)
 teamstats$key <- paste(teamstats$team, teamstats$the_date)
 m2<-merge(m1, teamstats, by="key")
-lookup$away_team <- lookup$covers_team
-lookup$home_team <- lookup$covers_team
+lookup$away_team <- lookup$sb_team
+lookup$home_team <- lookup$sb_team
 
 ## Total Lines
 lines$game_time<-as.POSIXlt(lines$game_time)
