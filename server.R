@@ -238,8 +238,8 @@ result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM2, result$GAME_TIME.TEA
 result <- result[,c(-18,-20)]
 #result <- result[,c(1,19,18,17,2:16)]
 
-colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", "chd_fg", 
-"chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb", "SEASON_PPG.TEAM2", "GAME_DATE")
+colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", 
+"chd_fg", "chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb", "SEASON_PPG.TEAM2", "GAME_DATE")
 
 #colnames(result)[3:19] <- c("TEAM1_FAV", "TEAM1_HOME", "TEAM1", "TEAM2", "HALF_PTS.T1","HALF_PTS.T2","LINE","SPREAD", "LINE_HALF", "HALF_SPREAD", "MWT", "chd_fg","chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb")
 #result$SUM_FGP = result$FGP_T1 + result$FGP_T2
@@ -286,6 +286,7 @@ result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$ch
 
 
 colnames(result)[9] <- "mwt.TEAM1"
+colnames(result)[c(12,13,17)] <- c("chd_fg.TEAM1", "chd_fgm.TEAM1", "chd_oreb.TEAM1")
 
 load("~/sports/halftimeOversModel.Rdat")
 p <- predict(r, newdata=result, type="prob")
