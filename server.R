@@ -217,57 +217,128 @@ f[seq(from=2, to=dim(f)[1], by=2),]$team <- "TEAM2"
 #f <- f[,c(1,2,13,28,32,48:52,54:69)]
 wide <- reshape(f, direction = "wide", idvar="GAME_ID", timevar="team")
 
-result <- wide
-result <- result[,c("GAME_ID", "TEAM.x.TEAM1", "TEAM.x.TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD.TEAM1", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "mwt.TEAM1", "half_diff.TEAM1", 
-"TO.TEAM1", "chd_fg.TEAM1", "chd_fgm.TEAM1", "chd_tpm.TEAM1", "chd_ftm.TEAM1", "chd_to.TEAM1", "chd_oreb.TEAM1", "GAME_DATE.x.TEAM2", "SEASON_PPG.TEAM2", "GAME_TIME.TEAM2")]
+wide$SPREAD_HALF.TEAM1<-as.numeric(wide$SPREAD_HALF.TEAM1)
+wide$SPREAD.TEAM1 <- as.numeric(wide$SPREAD.TEAM1)
+wide$FGS_GROUP <- NA
+if(length(which(abs(wide$SPREAD.TEAM1) < 3.1)) > 0){
+wide[which(abs(wide$SPREAD.TEAM1) < 3.1),]$FGS_GROUP <- '1'
+}
+if(length(which(abs(wide$SPREAD.TEAM1) >= 3.1 & abs(wide$SPREAD.TEAM1) < 8.1)) > 0){
+wide[which(abs(wide$SPREAD.TEAM1) >= 3.1 & abs(wide$SPREAD.TEAM1) < 8.1),]$FGS_GROUP <- '2'
+}
+if(length(which(abs(wide$SPREAD.TEAM1) >= 8.1 & abs(wide$SPREAD.TEAM1) <= 15.1)) > 0){
+wide[which(abs(wide$SPREAD.TEAM1) >= 8.1 & abs(wide$SPREAD.TEAM1) <= 15.1),]$FGS_GROUP <- '3'
+}
+if(length(which(abs(wide$SPREAD.TEAM1) > 15.1)) > 0){
+  wide[which(abs(wide$SPREAD.TEAM1) > 15.1),]$FGS_GROUP <- '4'
+}
 
-result$GAME_DATE<- strptime(paste(result$GAME_DATE.x.TEAM2, result$GAME_TIME.TEAM2), format="%m/%d/%Y %I:%M %p")
-result <- result[,c(-18,-20)]
+
+wide$LINE_HALF.TEAM1<-as.numeric(wide$LINE_HALF.TEAM1)
+wide$HALF_DIFF <- NA
+wide$underDog.TEAM1 <- wide$HOME_TEAM.TEAM1 == FALSE & wide$SPREAD.TEAM1 > 0
+under.teams <- which(wide$underDog.TEAM1)
+favorite.teams <- which(!wide$underDog.TEAM1)
+wide[under.teams,]$HALF_DIFF <- wide[under.teams,]$HALF_PTS.TEAM2 - wide[under.teams,]$HALF_PTS.TEAM1
+wide[favorite.teams,]$HALF_DIFF <- wide[favorite.teams,]$HALF_PTS.TEAM1 - wide[favorite.teams,]$HALF_PTS.TEAM2
+wide$MWTv2 <- wide$LINE_HALF.TEAM1 - (wide$LINE.TEAM1 /2)
+wide$possessions.TEAM1 <- wide$HALF_FGA.TEAM1 + (wide$HALF_FTA.TEAM1 / 2) + wide$HALF_TO.TEAM1 - wide$HALF_OREB.TEAM1
+wide$possessions.TEAM2 <- wide$HALF_FGA.TEAM2 + (wide$HALF_FTA.TEAM2 / 2) + wide$HALF_TO.TEAM2 - wide$HALF_OREB.TEAM2
+
+wide$SEASON_ORPG.TEAM1<-wide$SEASON_OFFR.TEAM1 / wide$SEASON_GP.TEAM1
+wide$SEASON_ORPG.TEAM2<-wide$SEASON_OFFR.TEAM2 / wide$SEASON_GP.TEAM2
+wide$possessions.TEAM1.SEASON <- (wide$SEASON_FGA.TEAM1 / wide$SEASON_GP.TEAM1) + ((wide$SEASON_FTA.TEAM1 / wide$SEASON_GP.TEAM1) / 2)
+                                  + wide$SEASON_TPG.TEAM1 - wide$SEASON_ORPG.TEAM1
+wide$possessions.TEAM2.SEASON <- (wide$SEASON_FGA.TEAM2 / wide$SEASON_GP.TEAM2) + ((wide$SEASON_FTA.TEAM2 / wide$SEASON_GP.TEAM2) / 2)
+                                + wide$SEASON_TPG.TEAM2 - wide$SEASON_ORPG.TEAM2
+wide$POSSvE <- NA
+
+## Adjust this for Fav and Dog
+wide[under.teams,]$POSSvE <- ((wide[under.teams,]$possessions.TEAM2 + wide[under.teams,]$possessions.TEAM1) / 2) - ((wide[under.teams,]$possessions.TEAM2.SEASON /
+                                2 + wide[under.teams,]$possessions.TEAM1.SEASON / 2) / 2)
+wide[favorite.teams,]$POSSvE <- ((wide[favorite.teams,]$possessions.TEAM1 + wide[favorite.teams,]$possessions.TEAM2) / 2) - ((wide[favorite.teams,]$possessions.TEAM1.SEASON /
+                                2 + wide[favorite.teams,]$possessions.TEAM2.SEASON / 2) / 2)
+wide$P100vE <- NA
+wide$P100.TEAM1 <- wide$HALF_PTS.TEAM1 / wide$possessions.TEAM1 * 100
+wide$P100.TEAM1.SEASON <- wide$SEASON_PPG.TEAM1 / wide$possessions.TEAM1.SEASON * 100
+
+wide$P100.TEAM2 <- wide$HALF_PTS.TEAM2 / wide$possessions.TEAM2 * 100
+wide$P100.TEAM2.SEASON <- wide$SEASON_PPG.TEAM2 / wide$possessions.TEAM2.SEASON * 100
+
+wide$P100_DIFF <- NA
+wide[under.teams,]$P100_DIFF <- (wide[under.teams,]$P100.TEAM2 - wide[under.teams,]$P100.TEAM2.SEASON) - (wide[under.teams,]$P100.TEAM1 - wide[under.teams,]$P100.TEAM1.SEASON)
+wide[favorite.teams,]$P100_DIFF <- (wide[favorite.teams,]$P100.TEAM1 - wide[favorite.teams,]$P100.TEAM1.SEASON) - (wide[favorite.teams,]$P100.TEAM2 - wide[favorite.teams,]$P100.TEAM2.SEASON)
+wide[favorite.teams,]$P100vE <- (wide[favorite.teams,]$P100.TEAM1 - wide[favorite.teams,]$P100.TEAM1.SEASON) + (wide[favorite.teams,]$P100.TEAM2 -
+                                        wide[favorite.teams,]$P100.TEAM2.SEASON)
+wide[under.teams,]$P100vE <- (wide[under.teams,]$P100.TEAM2 - wide[under.teams,]$P100.TEAM2.SEASON) + (wide[under.teams,]$P100.TEAM1 -
+                                        wide[under.teams,]$P100.TEAM1.SEASON)
+
+#wide$prediction<-predict(rpart.model,newdata=wide, type="class")
+wide$FAV <- ""
+wide[which(wide$underDog.TEAM1),]$FAV <- wide[which(wide$underDog.TEAM1),]$TEAM2.TEAM2
+wide[which(!wide$underDog.TEAM1),]$FAV <- wide[which(!wide$underDog.TEAM1),]$TEAM1.TEAM1
+wide$MWTv3 <- 0
+
+i <- which(wide$SPREAD.TEAM1 > 0)
+wide$MWTv3[i] <- wide[i,]$SPREAD_HALF.TEAM1 - (wide[i,]$SPREAD.TEAM1 / 2)
+
+i <- which(wide$SPREAD.TEAM1 <= 0)
+wide$MWTv3[i] <- -wide[i,]$SPREAD_HALF.TEAM1 + (wide[i,]$SPREAD.TEAM1 / 2)
+wide$MWT <- wide$HALF_PTS.TEAM1 + wide$HALF_PTS.TEAM2 + wide$LINE_HALF.TEAM1 - wide$LINE.TEAM1
+
+result <- wide
+result <- result[,c("GAME_ID", "GAME_DATE.x.TEAM2", "TEAM.x.TEAM1", "TEAM.x.TEAM2","LINE.TEAM1", "SPREAD.TEAM1","FGS_GROUP", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "mwt.TEAM1", 
+			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2")]
+colnames(result) <- c("GAME_ID", "GAME_DATE", "TEAM1", "TEAM2", "LINE", "SPREAD", "FGS_GROUP", "LINE_HALF", "SPREAD_HALF", "MWT", "P100.1H.1", "P100.1H.2", 
+			"P100.Seas.1", "P100.Seas.2", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2")
+
+result$GAME_DATE<- strptime(paste(result$GAME_DATE, result$GAME_TIME.TEAM2), format="%m/%d/%Y %I:%M %p")
+result <- result[,c(-17)]
 #result <- result[,c(1,19,18,17,2:16)]
 
-colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", 
-"chd_fg", "chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb", "SEASON_PPG.TEAM2", "GAME_DATE")
+#colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", 
+#"chd_fg", "chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb", "SEASON_PPG.TEAM2", "GAME_DATE")
 
 
-result$mwtO <- as.numeric(result$MWT < 7.1 & result$MWT > -3.9)
-result$chd_fgO <- as.numeric(result$chd_fg < .15 & result$chd_fg > -.07)
-result$chd_fgmO <- as.numeric(result$chd_fgm < -3.9)
-result$chd_tpmO <- as.numeric(result$chd_tpm < -1.9)
-result$chd_ftmO <- as.numeric(result$chd_ftm < -.9)
-result$chd_toO <- as.numeric(result$chd_to < -1.9)
+#result$mwtO <- as.numeric(result$MWT < 7.1 & result$MWT > -3.9)
+#result$chd_fgO <- as.numeric(result$chd_fg < .15 & result$chd_fg > -.07)
+#result$chd_fgmO <- as.numeric(result$chd_fgm < -3.9)
+#result$chd_tpmO <- as.numeric(result$chd_tpm < -1.9)
+#result$chd_ftmO <- as.numeric(result$chd_ftm < -.9)
+#result$chd_toO <- as.numeric(result$chd_to < -1.9)
 
-result$mwtO[is.na(result$mwtO)] <- 0
-result$chd_fgO[is.na(result$chd_fgO)] <- 0
-result$chd_fgmO[is.na(result$chd_fgmO)] <- 0
-result$chd_tpmO[is.na(result$chd_tpmO)] <- 0
-result$chd_ftmO[is.na(result$chd_ftmO)] <- 0
-result$chd_toO[is.na(result$chd_toO)] <- 0
-result$overSum <- result$mwtO + result$chd_fgO + result$chd_fgmO + result$chd_tpmO + result$chd_ftmO + result$chd_toO
+#result$mwtO[is.na(result$mwtO)] <- 0
+#result$chd_fgO[is.na(result$chd_fgO)] <- 0
+#result$chd_fgmO[is.na(result$chd_fgmO)] <- 0
+#result$chd_tpmO[is.na(result$chd_tpmO)] <- 0
+#result$chd_ftmO[is.na(result$chd_ftmO)] <- 0
+#result$chd_toO[is.na(result$chd_toO)] <- 0
+#result$overSum <- result$mwtO + result$chd_fgO + result$chd_fgmO + result$chd_tpmO + result$chd_ftmO + result$chd_toO
 
-result$fullSpreadU <- as.numeric(abs(result$SPREAD) > 10.9)
-result$mwtU <- as.numeric(result$MWT > 7.1)
-result$chd_fgU <- as.numeric(result$chd_fg > .15 | result$chd_fg < -.07)
-result$chd_fgmU <- 0
-result$chd_tpmU <- 0
-result$chd_ftmU <- as.numeric(result$chd_ftm > -0.9)
-result$chd_toU <- as.numeric(result$chd_to > -1.9)
+#result$fullSpreadU <- as.numeric(abs(result$SPREAD) > 10.9)
+#result$mwtU <- as.numeric(result$MWT > 7.1)
+#result$chd_fgU <- as.numeric(result$chd_fg > .15 | result$chd_fg < -.07)
+#result$chd_fgmU <- 0
+#result$chd_tpmU <- 0
+#result$chd_ftmU <- as.numeric(result$chd_ftm > -0.9)
+#result$chd_toU <- as.numeric(result$chd_to > -1.9)
 
-result$mwtU[is.na(result$mwtU)] <- 0
-result$chd_fgO[is.na(result$chd_fgU)] <- 0
-result$chd_fgmU[is.na(result$chd_fgmU)] <- 0
-result$chd_tpmU[is.na(result$chd_tpmU)] <- 0
-result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
-result$chd_toU[is.na(result$chd_toU)] <- 0
-result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
+#result$mwtU[is.na(result$mwtU)] <- 0
+#result$chd_fgO[is.na(result$chd_fgU)] <- 0
+#result$chd_fgmU[is.na(result$chd_fgmU)] <- 0
+#result$chd_tpmU[is.na(result$chd_tpmU)] <- 0
+#result$chd_ftmU[is.na(result$chd_ftmU)] <- 0
+#result$chd_toU[is.na(result$chd_toU)] <- 0
+#result$underSum <- result$fullSpreadU + result$mwtU + result$chd_fgU + result$chd_fgmU + result$chd_tpmU + result$chd_ftmU + result$chd_toU
 
-colnames(result)[9] <- "mwt.TEAM1"
-colnames(result)[c(12,13,17)] <- c("chd_fg.TEAM1", "chd_fgm.TEAM1", "chd_oreb.TEAM1")
+#colnames(result)[9] <- "mwt.TEAM1"
+#colnames(result)[c(12,13,17)] <- c("chd_fg.TEAM1", "chd_fgm.TEAM1", "chd_oreb.TEAM1")
 
 
-load("~/sports/halftimeOversModel.Rdat")
-p <- predict(r, newdata=result, type="prob")
+#load("~/sports/halftimeOversModel.Rdat")
+#p <- predict(r, newdata=result, type="prob")
 
-result$predOverProb <- p[,2]
+#result$predOverProb <- p[,2]
 
 result <- result[order(result$GAME_DATE),]
 result$GAME_DATE <- as.character(result$GAME_DATE)
