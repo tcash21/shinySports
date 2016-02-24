@@ -254,10 +254,11 @@ wide$possessions.TEAM2.SEASON <- (wide$SEASON_FGA.TEAM2 / wide$SEASON_GP.TEAM2) 
 wide$POSSvE <- NA
 
 ## Adjust this for Fav and Dog
-wide[under.teams,]$POSSvE <- ((wide[under.teams,]$possessions.TEAM2 + wide[under.teams,]$possessions.TEAM1) / 2) - ((wide[under.teams,]$possessions.TEAM2.SEASON /
-                                2 + wide[under.teams,]$possessions.TEAM1.SEASON / 2) / 2)
-wide[favorite.teams,]$POSSvE <- ((wide[favorite.teams,]$possessions.TEAM1 + wide[favorite.teams,]$possessions.TEAM2) / 2) - ((wide[favorite.teams,]$possessions.TEAM1.SEASON /
-                                2 + wide[favorite.teams,]$possessions.TEAM2.SEASON / 2) / 2)
+wide[under.teams,]$POSSvE <- ((wide[under.teams,]$possessions.TEAM2 + wide[under.teams,]$possessions.TEAM1) / 2) - ((wide[under.teams,]$possessions.TEAM2.SEASON / 2 - 1
+                              + wide[under.teams,]$possessions.TEAM1.SEASON / 2 - 1) / 2)
+wide[favorite.teams,]$POSSvE <- ((wide[favorite.teams,]$possessions.TEAM1 + wide[favorite.teams,]$possessions.TEAM2) / 2) - ((wide[favorite.teams,]$possessions.TEAM1.SEASON / 2 - 1
+                              + wide[favorite.teams,]$possessions.TEAM2.SEASON / 2 - 1) / 2)
+
 wide$P100vE <- NA
 wide$P100.TEAM1 <- wide$HALF_PTS.TEAM1 / wide$possessions.TEAM1 * 100
 wide$P100.TEAM1.SEASON <- wide$SEASON_PPG.TEAM1 / wide$possessions.TEAM1.SEASON * 100
@@ -266,12 +267,13 @@ wide$P100.TEAM2 <- wide$HALF_PTS.TEAM2 / wide$possessions.TEAM2 * 100
 wide$P100.TEAM2.SEASON <- wide$SEASON_PPG.TEAM2 / wide$possessions.TEAM2.SEASON * 100
 
 wide$P100_DIFF <- NA
-wide[under.teams,]$P100_DIFF <- (wide[under.teams,]$P100.TEAM2 - wide[under.teams,]$P100.TEAM2.SEASON) - (wide[under.teams,]$P100.TEAM1 - wide[under.teams,]$P100.TEAM1.SEASON)
-wide[favorite.teams,]$P100_DIFF <- (wide[favorite.teams,]$P100.TEAM1 - wide[favorite.teams,]$P100.TEAM1.SEASON) - (wide[favorite.teams,]$P100.TEAM2 - wide[favorite.teams,]$P100.TEAM2.SEASON)
-wide[favorite.teams,]$P100vE <- (wide[favorite.teams,]$P100.TEAM1 - wide[favorite.teams,]$P100.TEAM1.SEASON) + (wide[favorite.teams,]$P100.TEAM2 -
-                                        wide[favorite.teams,]$P100.TEAM2.SEASON)
-wide[under.teams,]$P100vE <- (wide[under.teams,]$P100.TEAM2 - wide[under.teams,]$P100.TEAM2.SEASON) + (wide[under.teams,]$P100.TEAM1 -
-                                        wide[under.teams,]$P100.TEAM1.SEASON)
+wide[under.teams,]$P100_DIFF <- (wide[under.teams,]$P100.TEAM2 - (wide[under.teams,]$P100.TEAM2.SEASON - 8)) - (wide[under.teams,]$P100.TEAM1 - (wide[under.teams,]$P100.TEAM1.SEASON - 9))
+wide[favorite.teams,]$P100_DIFF <- (wide[favorite.teams,]$P100.TEAM1 - (wide[favorite.teams,]$P100.TEAM1.SEASON - 8)) - (wide[favorite.teams,]$P100.TEAM2 - (wide[favorite.teams,]$P100.TEAM2.SEASON - 9))
+
+wide[favorite.teams,]$P100vE <- (wide[favorite.teams,]$P100.TEAM1 - (wide[favorite.teams,]$P100.TEAM1.SEASON - 8)) + (wide[favorite.teams,]$P100.TEAM2 -
+                                        (wide[favorite.teams,]$P100.TEAM2.SEASON - 9))
+wide[under.teams,]$P100vE <- (wide[under.teams,]$P100.TEAM2 - (wide[under.teams,]$P100.TEAM2.SEASON - 8)) + (wide[under.teams,]$P100.TEAM1 -
+                                        (wide[under.teams,]$P100.TEAM1.SEASON - 9))
 
 #wide$prediction<-predict(rpart.model,newdata=wide, type="class")
 wide$FAV <- ""
@@ -288,11 +290,11 @@ wide$MWT <- wide$HALF_PTS.TEAM1 + wide$HALF_PTS.TEAM2 + wide$LINE_HALF.TEAM1 - w
 
 result <- wide
 result <- result[,c("GAME_ID", "GAME_DATE.x.TEAM2", "TEAM.x.TEAM1", "TEAM.x.TEAM2","LINE.TEAM1", "SPREAD.TEAM1","FGS_GROUP", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "mwt.TEAM1", 
-			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2")]
+			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2", "POSSvE")]
 colnames(result) <- c("GAME_ID", "GAME_DATE", "TEAM1", "TEAM2", "LINE", "SPREAD", "FGS_GROUP", "LINE_HALF", "SPREAD_HALF", "MWT", "P100.1H.1", "P100.1H.2", 
-			"P100.Seas.1", "P100.Seas.2", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2")
+			"P100.Seas.1", "P100.Seas.2", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2", "POSSvE")
 
-result$GAME_DATE<- strptime(paste(result$GAME_DATE, result$GAME_TIME.TEAM2), format="%m/%d/%Y %I:%M %p")
+result$GAME_DATE<- strptime(paste(result$GAME_DATE, result$GAME_TIME.TEAM2), format="%m/%d/%Y %H:%M %p")
 result <- result[,c(-17)]
 #result <- result[,c(1,19,18,17,2:16)]
 
