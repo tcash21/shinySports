@@ -239,7 +239,7 @@ if(length(which(abs(wide$SPREAD.TEAM1) > 15.1)) > 0){
 
 wide$LINE_HALF.TEAM1<-as.numeric(wide$LINE_HALF.TEAM1)
 wide$HALF_DIFF <- NA
-wide$underDog.TEAM1 <- wide$HOME_TEAM.TEAM1 == FALSE & wide$SPREAD.TEAM1 > 0
+wide$underDog.TEAM1 <- (wide$HOME_TEAM.TEAM1 == FALSE & wide$SPREAD.TEAM1 > 0) | (wide$HOME_TEAM.TEAM1 == TRUE & wide$SPREAD.TEAM1 < 0)
 under.teams <- which(wide$underDog.TEAM1)
 favorite.teams <- which(!wide$underDog.TEAM1)
 wide[under.teams,]$HALF_DIFF <- wide[under.teams,]$HALF_PTS.TEAM2 - wide[under.teams,]$HALF_PTS.TEAM1
