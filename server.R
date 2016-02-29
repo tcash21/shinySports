@@ -287,12 +287,16 @@ wide$MWT <- wide$HALF_PTS.TEAM1 + wide$HALF_PTS.TEAM2 + wide$LINE_HALF.TEAM1 - w
 
 result <- wide
 result <- result[,c("GAME_ID", "GAME_DATE.x.TEAM2", "TEAM.x.TEAM1", "TEAM.x.TEAM2","FAV","LINE.TEAM1", "SPREAD.TEAM1","FGS_GROUP", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "mwt.TEAM1", 
-			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2", "POSSvE")]
-colnames(result) <- c("GAME_ID", "GAME_DATE", "TEAM1", "TEAM2","FAV", "LINE", "SPREAD", "FGS_GROUP", "LINE_HALF", "SPREAD_HALF", "MWT", "P100.1H.1", "P100.1H.2", 
-			"P100.Seas.1", "P100.Seas.2", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2", "POSSvE")
+			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2", "POSSvE", 
+			"HALF_DIFF", "HALF_PTS.TEAM1", "HALF_PTS.TEAM2")]
+colnames(result) <- c("GAME_ID", "GAME_DATE", "TEAM1", "TEAM2","FAV", "LINE", "SPREAD", "FGSG", "2H_LINE", "2H_SPRD", "MWT", "P100.1H.1", "P100.1H.2", 
+			"P100.Seas.1", "P100.Seas.2", "P100_D", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2", "POSSvE", "HT_D", "Score1", "Score2")
+result <- result[,c("TEAM1", "TEAM2", "FAV", "FGSG", "POSSvE", "P100vE", "P100_D", "MWT", "HT_D", "LINE", "2H_LINE", "SPREAD", "2H_SPRD", "Score1", "Score2", "P100.1H.1", "P100.Seas.1", 
+			"P100.1H.2","P100.Seas.2","Seas.Pts.1", "Seas.Pts.2", "GAME_DATE", "GAME_ID", "GAME_TIME.TEAM2")]
 
 result$GAME_DATE<- strptime(paste(result$GAME_DATE, result$GAME_TIME.TEAM2), format="%m/%d/%Y %H:%M %p")
-result <- result[,c(-18)]
+result <- result[order(result$GAME_DATE),]
+result <- result[,c(-24)]
 #result <- result[,c(1,19,18,17,2:16)]
 
 #colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", 
@@ -334,14 +338,9 @@ result <- result[,c(-18)]
 #colnames(result)[c(12,13,17)] <- c("chd_fg.TEAM1", "chd_fgm.TEAM1", "chd_oreb.TEAM1")
 
 
-#load("~/sports/halftimeOversModel.Rdat")
-#p <- predict(r, newdata=result, type="prob")
-
-#result$predOverProb <- p[,2]
-
-result <- result[order(result$GAME_DATE),]
+#result <- result[order(result$GAME_DATE),]
 result$GAME_DATE <- as.character(result$GAME_DATE)
-
+result$GAME_DATE <- substr(result$GAME_DATE, 11, 18)
 } else{
 
 return(data.frame(results="No Results"))
@@ -349,7 +348,6 @@ return(data.frame(results="No Results"))
 }
 
 return(result)
-#return(f[,c(1,2,30,31,54:67)])
 dbDisconnect(con)
 
 })
@@ -359,7 +357,7 @@ dbDisconnect(con)
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
 #  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
-  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
+  dTable(newData(), bPaginate=F, aaSorting=list(c(21, "desc")))
 
 
 })
