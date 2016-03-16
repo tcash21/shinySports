@@ -9,13 +9,16 @@ all <- read.csv("/home/ec2-user/sports/testfile.csv")
 all$GAME_DATE <- as.Date(as.character(all$GAME_DATE.x.TEAM1), format='%m/%d/%Y')
 all <- all[order(all$GAME_DATE),]
 
-y <- Sys.Date() - 2
+y <- Sys.Date() - 1
 yesterday<-subset(all, GAME_DATE == y)
 share_over_y <- table(yesterday$Over)[2] / sum(table(yesterday$Over))
+if(is.na(share_over_y)){
+    share_over_y <- 0
+}
 
-today <- subset(all, GAME_DATE == Sys.Date())
-share_today <- table(today$Over)[2] / sum(table(today$Over))
-stats <- data.frame(share_over_y, share_today)
+#today <- subset(all, GAME_DATE == Sys.Date())
+#share_today <- table(today$Over)[2] / sum(table(today$Over))
+stats <- data.frame(share_over_y)
 
 options(shiny.trace=TRUE)
 
