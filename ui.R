@@ -15,8 +15,8 @@ shinyUI(pageWithSidebar(
   
   mainPanel(
         
-     showOutput('results', 'datatables')
-                   
+     showOutput('results', 'datatables'),
+     tableOutput('stats')                   
     )
     
 ))

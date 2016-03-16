@@ -5,6 +5,18 @@ library(RSQLite)
 library(shiny)
 library(rCharts)
 
+all <- read.csv("/home/ec2-user/sports/testfile.csv")
+all$GAME_DATE <- as.Date(as.character(all$GAME_DATE.x.TEAM1), format='%m/%d/%Y')
+all <- all[order(all$GAME_DATE),]
+
+y <- Sys.Date() - 2
+yesterday<-subset(all, GAME_DATE == y)
+share_over_y <- table(yesterday$Over)[2] / sum(table(yesterday$Over))
+
+today <- subset(all, GAME_DATE == Sys.Date())
+share_today <- table(today$Over)[2] / sum(table(today$Over))
+stats <- data.frame(share_over_y, share_today)
+
 options(shiny.trace=TRUE)
 
 shinyServer(function(input, output, session){
@@ -38,6 +50,7 @@ for (i in seq(along=tables)) {
   cat(tables[[i]], ":", i, "\n")
 }
 
+
 halflines <- lDataFrames[[which(tables == "NCAASBHalfLines")]]
 games <- lDataFrames[[which(tables == "NCAAgames")]]
 lines <- lDataFrames[[which(tables == "NCAASBLines")]]
@@ -46,7 +59,6 @@ boxscores <- lDataFrames[[which(tables == "NCAAstats")]]
 lookup <- lDataFrames[[which(tables == "NCAASBTeamLookup")]]
 ncaafinal <- lDataFrames[[which(tables == "NCAAfinalstats")]]
 seasontotals <- lDataFrames[[which(tables == "NCAAseasontotals")]]
-#papg <- lDataFrames[[24]]
 
 if(dim(halflines)[1] > 0 ){
 
@@ -285,14 +297,25 @@ i <- which(wide$SPREAD.TEAM1 <= 0)
 wide$MWTv3[i] <- -wide[i,]$SPREAD_HALF.TEAM1 + (wide[i,]$SPREAD.TEAM1 / 2)
 wide$MWT <- wide$HALF_PTS.TEAM1 + wide$HALF_PTS.TEAM2 + wide$LINE_HALF.TEAM1 - wide$LINE.TEAM1
 
+wide$first_half_pts <- wide$HALF_PTS.TEAM1 + wide$HALF_PTS.TEAM2
+
+wide$LAGMSECONDHALFWINIFBETOVER <- share_over_y
+#wide$LAGMSECONDHALFWINIFBETOVER <- 0.7142857
+wide$PRED_LINEHALF <-  10.479352084 + (-0.071728827 * as.numeric(wide$FGS_GROUP)) + (0.3751975374 * wide$LINE.TEAM1) + (-0.21859298 * wide$LAGMSECONDHALFWINIFBETOVER) +
+                (-0.00911562 * wide$SPREAD.TEAM1) + (0.177476952 * wide$first_half_pts) + (0.0088223095 * wide$SPREAD_HALF.TEAM1) + (0.0486273652 * wide$POSSvE) +
+                (-0.002505684 * wide$P100vE) + (-0.007201024 * wide$P100_DIFF) + (-1.854591791 * wide$chd_fg.TEAM1) + (-0.093669162 * wide$chd_fgm.TEAM2) +
+                (-0.111442071 * wide$chd_tpm.TEAM2) + (-0.071162504 * wide$chd_ftm.TEAM2) + (-0.028082467 * wide$chd_to.TEAM2) +
+                (0.0028639313 * wide$chd_oreb.TEAM2) + 0.35
+wide$alphadiff <- wide$PRED_LINEHALF - wide$LINE_HALF.TEAM1
+
 result <- wide
 result <- result[,c("GAME_ID", "GAME_DATE.x.TEAM2", "TEAM.x.TEAM1", "TEAM.x.TEAM2","FAV","LINE.TEAM1", "SPREAD.TEAM1","FGS_GROUP", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "mwt.TEAM1", 
 			"P100.TEAM1", "P100.TEAM2", "P100.TEAM1.SEASON", "P100.TEAM2.SEASON", "P100_DIFF", "P100vE", "GAME_TIME.TEAM2", "SEASON_PPG.TEAM1", "SEASON_PPG.TEAM2", "POSSvE", 
-			"HALF_DIFF", "HALF_PTS.TEAM1", "HALF_PTS.TEAM2")]
+			"HALF_DIFF", "HALF_PTS.TEAM1", "HALF_PTS.TEAM2","PRED_LINEHALF", "alphadiff")]
 colnames(result) <- c("GAME_ID", "GAME_DATE", "TEAM1", "TEAM2","FAV", "LINE", "SPREAD", "FGSG", "2H_LINE", "2H_SPRD", "MWT", "P100.1H.1", "P100.1H.2", 
-			"P100.Seas.1", "P100.Seas.2", "P100_D", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2", "POSSvE", "HT_D", "Score1", "Score2")
+			"P100.Seas.1", "P100.Seas.2", "P100_D", "P100vE", "GAME_TIME.TEAM2", "Seas.Pts.1", "Seas.Pts.2", "POSSvE", "HT_D", "Score1", "Score2", "PRED_LINEHALF", "alphadiff")
 result <- result[,c("TEAM1", "TEAM2", "FAV", "FGSG", "POSSvE", "P100vE", "P100_D", "MWT", "HT_D", "LINE", "2H_LINE", "SPREAD", "2H_SPRD", "Score1", "Score2", "P100.1H.1", "P100.Seas.1", 
-			"P100.1H.2","P100.Seas.2","Seas.Pts.1", "Seas.Pts.2", "GAME_DATE", "GAME_ID", "GAME_TIME.TEAM2")]
+			"P100.1H.2","P100.Seas.2","Seas.Pts.1", "Seas.Pts.2", "GAME_DATE", "GAME_ID", "GAME_TIME.TEAM2", "PRED_LINEHALF", "alphadiff")]
 
 result$GAME_DATE<- strptime(paste(result$GAME_DATE, result$GAME_TIME.TEAM2), format="%m/%d/%Y %H:%M %p")
 result <- result[order(result$GAME_DATE),]
@@ -351,6 +374,11 @@ return(result)
 dbDisconnect(con)
 
 })
+
+output$stats <- renderTable({
+   stats
+  }, include.rownames=FALSE)
+
 
 
 
