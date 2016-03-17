@@ -325,6 +325,8 @@ result <- result[order(result$GAME_DATE),]
 result <- result[,c(-24)]
 #result <- result[,c(1,19,18,17,2:16)]
 
+result <- result[,c(1:2,24,25,3:23)]
+
 #colnames(result) <- c("GAME_ID", "TEAM1", "TEAM2", "SEASON_PPG.TEAM1", "LINE.TEAM1", "SPREAD", "LINE_HALF.TEAM1", "SPREAD_HALF.TEAM1", "MWT", "half_diff.TEAM1", "TO.TEAM1", 
 #"chd_fg", "chd_fgm", "chd_tpm", "chd_ftm", "chd_to", "chd_oreb", "SEASON_PPG.TEAM2", "GAME_DATE")
 
@@ -388,7 +390,7 @@ output$stats <- renderTable({
 output$results <- renderChart2({
 #  invalidateLater(5000, session) 
 #  dTable(newData(), bPaginate=F, aaSorting=list(c(1,"asc")))
-  dTable(newData(), bPaginate=F, aaSorting=list(c(21, "desc")))
+  dTable(newData(), bPaginate=F, aaSorting=list(c(23, "desc")))
 
 
 })
