@@ -9,7 +9,10 @@ all <- read.csv("/home/ec2-user/sports/testfile.csv")
 all$GAME_DATE <- as.Date(as.character(all$GAME_DATE.x.TEAM1), format='%m/%d/%Y')
 all <- all[order(all$GAME_DATE),]
 
-y <- Sys.Date() - 1
+p<-as.POSIXlt(Sys.time()) 
+p$hour <- p$hour - 3
+y <- as.Date(p) - 1
+#y <- Sys.Date() - 1
 yesterday<-subset(all, GAME_DATE == y)
 share_over_y <- table(yesterday$Over)[2] / sum(table(yesterday$Over))
 if(is.na(share_over_y)){
