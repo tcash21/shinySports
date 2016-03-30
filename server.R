@@ -14,14 +14,14 @@ p$hour <- p$hour - 3
 y <- as.Date(p) - 1
 #y <- Sys.Date() - 1
 yesterday<-subset(all, GAME_DATE == y)
-share_over_y <- table(yesterday$Over)[2] / sum(table(yesterday$Over))
+share_over_y <<- table(yesterday$Over)[2] / sum(table(yesterday$Over))
 if(is.na(share_over_y)){
-    share_over_y <- 0
+    share_over_y <<- 0
 }
 
 #today <- subset(all, GAME_DATE == Sys.Date())
 #share_today <- table(today$Over)[2] / sum(table(today$Over))
-stats <- data.frame(share_over_y)
+stats <<- data.frame(share_over_y)
 
 options(shiny.trace=TRUE)
 
@@ -140,20 +140,20 @@ if(dim(m3a)[1] > 0){
 }
 
 halftime_stats<-rbind(m3a,m3h)
-#if(length(which(halftime_stats$game_id %in% names(which(table(halftime_stats$game_id) != 2))) > 0)){
-#halftime_stats<-halftime_stats[-which(halftime_stats$game_id %in% names(which(table(halftime_stats$game_id) != 2)) ),]
-#}
+if(length(which(halftime_stats$game_id %in% names(which(table(halftime_stats$game_id) != 2))) > 0)){
+halftime_stats<-halftime_stats[-which(halftime_stats$game_id %in% names(which(table(halftime_stats$game_id) != 2)) ),]
+}
 #halftime_stats <- subset(halftime_stats, line.y != 'OFF')
 
-halftime_stats <- halftime_stats[match(unique(halftime_stats$key), halftime_stats$key),]
-halftime_stats <- subset(halftime_stats, game_id != names(which(table(halftime_stats$game_id) != 2)))
+#halftime_stats <- halftime_stats[match(unique(halftime_stats$key), halftime_stats$key),]
+#halftime_stats <- subset(halftime_stats, game_id != names(which(table(halftime_stats$game_id) != 2)))
 
 halftime_stats<-halftime_stats[which(!is.na(halftime_stats$line.y)),]
 halftime_stats<-halftime_stats[order(halftime_stats$game_id),]
 halftime_stats$CoversTotalLineUpdateTime <- as.character(halftime_stats$CoversTotalLineUpdateTime)
 halftime_stats$CoversHalfLineUpdateTime<-as.character(halftime_stats$CoversHalfLineUpdateTime)
 
-halftime_stats <- subset(halftime_stats, game_id != names(which(table(halftime_stats$game_id) != 2)))
+#halftime_stats <- subset(halftime_stats, game_id != names(which(table(halftime_stats$game_id) != 2)))
 
 
 #diffs<-ddply(halftime_stats, .(game_id), transform, diff=pts.x[1] - pts.x[2])
